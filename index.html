@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Image to Text Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+  </head>
+  <body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+      <h1 class="text-3xl font-bold text-center text-blue-600 mb-8">Image to Text Converter</h1>
+
+      <div class="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6">
+        <div class="mb-6">
+          <label class="block text-gray-700 font-medium mb-2" for="image-upload">
+            Upload Gambar
+          </label>
+          <div
+            id="drop-area"
+            class="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-blue-400 rounded-lg bg-blue-50 cursor-pointer transition hover:bg-blue-100 relative"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-10 w-10 text-blue-500 mb-2"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12"
+              />
+            </svg>
+            <p class="text-blue-600 font-medium">
+              Seret & lepas gambar di sini atau klik untuk memilih
+            </p>
+            <input
+              type="file"
+              id="image-upload"
+              accept="image/*"
+              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h2 class="text-xl font-semibold mb-3 text-gray-800">Gambar</h2>
+            <div
+              id="image-container"
+              class="border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center h-64 bg-gray-50 overflow-hidden"
+            >
+              <p class="text-gray-500" id="image-placeholder">
+                Pratinjau gambar akan muncul di sini
+              </p>
+            </div>
+            <button
+              id="remove-image-btn"
+              class="mt-3 px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition hidden"
+              type="button"
+            >
+              Hapus Gambar
+            </button>
+          </div>
+
+          <div>
+            <h2 class="text-xl font-semibold mb-3 text-gray-800">Hasil Teks</h2>
+            <div class="relative">
+              <textarea
+                id="text-output"
+                rows="10"
+                class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50"
+                placeholder="Teks hasil konversi akan muncul di sini..."
+                readonly
+              ></textarea>
+              <button
+                id="copy-btn"
+                class="absolute top-2 right-2 bg-blue-100 text-blue-600 p-2 rounded hover:bg-blue-200 transition"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div id="progress-container" class="mt-3 hidden">
+              <div class="flex justify-between text-sm text-gray-600 mb-1">
+                <span>Status:</span>
+                <span id="progress-status">Memulai...</span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-2.5">
+                <div
+                  id="progress-bar"
+                  class="bg-blue-600 h-2.5 rounded-full"
+                  style="width: 0%"
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 flex justify-center">
+          <button
+            id="convert-btn"
+            class="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Konversi ke Teks
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-8 text-center text-gray-500 text-sm">
+        <p>
+          Gunakan gambar dengan teks yang jelas untuk hasil terbaik. Aplikasi ini menggunakan
+          Tesseract.js untuk OCR.
+        </p>
+        <h6>Dibuat oleh Restian Dwi F</h6>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const imageUpload = document.getElementById("image-upload");
+        const imageContainer = document.getElementById("image-container");
+        const textOutput = document.getElementById("text-output");
+        const convertBtn = document.getElementById("convert-btn");
+        const copyBtn = document.getElementById("copy-btn");
+        const progressContainer = document.getElementById("progress-container");
+        const progressStatus = document.getElementById("progress-status");
+        const progressBar = document.getElementById("progress-bar");
+        const dropArea = document.getElementById("drop-area");
+
+        let selectedImage = null;
+
+        // Handle image upload
+        imageUpload.addEventListener("change", function (e) {
+          const file = e.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+
+            reader.onload = function (event) {
+              selectedImage = event.target.result;
+              imageContainer.innerHTML = `<img src="${selectedImage}" class="max-h-full max-w-full object-contain" alt="Uploaded image">`;
+              document.getElementById("remove-image-btn").classList.remove("hidden");
+              convertBtn.disabled = false;
+            };
+
+            reader.readAsDataURL(file);
+          }
+        });
+
+        // Handle convert button click
+        convertBtn.addEventListener("click", function () {
+          if (!selectedImage) return;
+
+          // Reset UI
+          textOutput.value = "";
+          progressContainer.classList.remove("hidden");
+          progressStatus.textContent = "Memulai...";
+          progressBar.style.width = "0%";
+          convertBtn.disabled = true;
+
+          // Perform OCR with Tesseract.js
+          Tesseract.recognize(
+            selectedImage,
+            "eng+ind", // English + Indonesian language support
+            {
+              logger: (m) => {
+                if (m.status) {
+                  progressStatus.textContent = m.status;
+                }
+                if (m.progress) {
+                  progressBar.style.width = `${m.progress * 100}%`;
+                }
+              },
+            }
+          )
+            .then(({ data: { text } }) => {
+              textOutput.value = text;
+              progressStatus.textContent = "Selesai!";
+              convertBtn.disabled = false;
+            })
+            .catch((err) => {
+              console.error(err);
+              progressStatus.textContent = "Error! Lihat console untuk detail.";
+              convertBtn.disabled = false;
+            });
+        });
+
+        // Handle copy button click
+        copyBtn.addEventListener("click", function () {
+          textOutput.select();
+          document.execCommand("copy");
+
+          // Show feedback
+          const originalText = copyBtn.innerHTML;
+          copyBtn.innerHTML =
+            '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+
+          setTimeout(() => {
+            copyBtn.innerHTML = originalText;
+          }, 2000);
+        });
+
+        // Drag & Drop events
+        ["dragenter", "dragover"].forEach((evt) => {
+          dropArea.addEventListener(evt, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropArea.classList.add("bg-blue-200", "border-blue-600");
+          });
+        });
+        ["dragleave", "drop"].forEach((evt) => {
+          dropArea.addEventListener(evt, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropArea.classList.remove("bg-blue-200", "border-blue-600");
+          });
+        });
+        dropArea.addEventListener("drop", function (e) {
+          const files = e.dataTransfer.files;
+          if (files && files[0]) {
+            imageUpload.files = files;
+            const event = new Event("change");
+            imageUpload.dispatchEvent(event);
+          }
+        });
+        // Klik area = klik input
+        dropArea.addEventListener("click", function (e) {
+          if (e.target === imageUpload) return;
+          imageUpload.click();
+        });
+
+        // Hapus gambar
+        const removeImageBtn = document.getElementById("remove-image-btn");
+        removeImageBtn.addEventListener("click", function () {
+          selectedImage = null;
+          imageContainer.innerHTML = `<p class='text-gray-500' id='image-placeholder'>Pratinjau gambar akan muncul di sini</p>`;
+          imageUpload.value = "";
+          removeImageBtn.classList.add("hidden");
+          convertBtn.disabled = true;
+        });
+      });
+    </script>
+  </body>
+</html>
